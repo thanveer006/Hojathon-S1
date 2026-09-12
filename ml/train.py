@@ -45,6 +45,7 @@ def main():
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--out", type=str, default="model")
     parser.add_argument("--batch-size", type=int, default=4)
+    parser.add_argument("--resume", type=str, default=None, help="checkpoint dir to resume from")
     args = parser.parse_args()
 
     here = Path(__file__).parent
@@ -112,7 +113,7 @@ def main():
         processing_class=tokenizer,
     )
 
-    trainer.train()
+    trainer.train(resume_from_checkpoint=args.resume)
 
     out_dir = here / args.out
     model.save_pretrained(out_dir)
