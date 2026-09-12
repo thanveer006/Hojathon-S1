@@ -3,6 +3,7 @@ import express from "express";
 import cors from "cors";
 import { connectDB } from "./db";
 import { applicantsRouter } from "./routes/applicants";
+import { uploadRouter } from "./routes/upload";
 
 const app = express();
 app.use(cors());
@@ -10,6 +11,7 @@ app.use(express.json());
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 app.use("/api/applicants", applicantsRouter);
+app.use("/api/upload", uploadRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error("[server] unhandled error:", err);

@@ -94,3 +94,43 @@ export interface AnalysisLogEntry extends PipelineResult {
   applicantId: string;
   createdAt: string;
 }
+
+// --- Arbitrary document upload flow ---
+
+export type DocCategory = "identity" | "income" | "eligibility" | "application" | "other";
+
+export const DOC_CATEGORY_OPTIONS: { value: DocCategory; label: string; hint: string }[] = [
+  { value: "identity", label: "Identity Document", hint: "e.g. Aadhaar, passport, voter ID" },
+  { value: "income", label: "Income Proof", hint: "e.g. income certificate, salary slip" },
+  { value: "eligibility", label: "Eligibility / Category Proof", hint: "e.g. ration card, caste certificate" },
+  { value: "application", label: "Application Form", hint: "the form being checked/corrected" },
+  { value: "other", label: "Other", hint: "anything else relevant" },
+];
+
+export type ComparableField = "name" | "dob" | "address" | "income" | "category";
+
+export interface DynamicDocumentResult {
+  label: string;
+  fileName: string;
+  category: DocCategory;
+  fields: Partial<Record<ComparableField, string | number>>;
+  otherFields: Record<string, string>;
+  rawTextPreview: string;
+}
+
+export interface DynamicFieldComparison {
+  field: ComparableField;
+  values: { source: string; value: string | number }[];
+  isContradiction: boolean;
+}
+
+export interface DynamicPipelineResult {
+  documents: DynamicDocumentResult[];
+  fieldsCompared: DynamicFieldComparison[];
+  contradictions: ContradictionRecord[];
+  correctedRecord: Record<string, string | number>;
+  correctionsApplied: string[];
+  hasApplicationDoc: boolean;
+  explanation: string;
+  pipelineTrace: PipelineTraceEntry[];
+}

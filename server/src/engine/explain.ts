@@ -1,5 +1,4 @@
 import { ContradictionRecord } from "../models/AnalysisLog";
-import { CorrectedApplication } from "./act";
 
 const LOCAL_LLM_URL = process.env.LOCAL_LLM_URL || "http://127.0.0.1:8001/explain";
 
@@ -11,11 +10,16 @@ const LOCAL_LLM_URL = process.env.LOCAL_LLM_URL || "http://127.0.0.1:8001/explai
  * ml/serve.py — no external API involved at runtime. Falls back to a
  * deterministic template if the local model isn't running, so the pipeline
  * still runs end-to-end even before training is set up.
+ *
+ * Takes only `{ correctionsApplied }` from the corrected-application object
+ * (rather than the full CorrectedApplication shape) so this same function
+ * serves both the fixed seeded-applicant pipeline and the dynamic
+ * arbitrary-document pipeline, which don't share one corrected-record type.
  */
 export async function generateExplanation(
   applicantName: string,
   contradictions: ContradictionRecord[],
-  correctedApplication: CorrectedApplication
+  correctedApplication: { correctionsApplied: string[] }
 ): Promise<string> {
   if (contradictions.length === 0) {
     return `Good news, ${applicantName} — all four documents agree with each other. No contradictions were found and your application is ready to proceed as submitted.`;
@@ -33,7 +37,7 @@ export async function generateExplanation(
 async function callLocalModel(
   applicantName: string,
   contradictions: ContradictionRecord[],
-  correctedApplication: CorrectedApplication
+  correctedApplication: { correctionsApplied: string[] }
 ): Promise<string | null> {
   // Generous: a small CPU-served model takes seconds, and aborting early
   // silently downgrades every response to the template fallback.

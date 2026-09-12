@@ -13,10 +13,60 @@ import { ContradictionsPanel } from "./components/ContradictionsPanel";
 import { CorrectedApplicationCard } from "./components/CorrectedApplicationCard";
 import { ExplanationCard } from "./components/ExplanationCard";
 import { LogHistory } from "./components/LogHistory";
+import { UploadAnalyzer } from "./components/UploadAnalyzer";
+import { AccentButton, ErrorBanner, SectionHeading } from "./components/ui";
 
 const FRIENDLY_ERROR = "Something went wrong talking to the server. Please try again.";
 
+type Mode = "seeded" | "upload";
+
+function ModeTab({
+  active,
+  onClick,
+  icon,
+  label,
+  sub,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: JSX.Element;
+  label: string;
+  sub: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-1 items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
+        active
+          ? "border-setu-teal bg-teal-50 dark:bg-teal-500/10"
+          : "border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+      }`}
+    >
+      <div
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+          active
+            ? "bg-setu-teal text-white"
+            : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+        }`}
+      >
+        {icon}
+      </div>
+      <div>
+        <div
+          className={`text-sm font-semibold ${
+            active ? "text-setu-teal" : "text-slate-700 dark:text-slate-200"
+          }`}
+        >
+          {label}
+        </div>
+        <div className="text-xs text-slate-400">{sub}</div>
+      </div>
+    </button>
+  );
+}
+
 export default function App() {
+  const [mode, setMode] = useState<Mode>("seeded");
   const [applicants, setApplicants] = useState<ApplicantSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [docs, setDocs] = useState<ApplicantDocuments | null>(null);
@@ -74,12 +124,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen">
-      <header className="bg-gradient-to-r from-setu-teal to-teal-700 text-white border-b border-teal-900/20 shadow-sm">
-        <div className="max-w-6xl mx-auto px-6 py-5 flex items-center gap-4">
+      <header className="border-b border-teal-900/10 bg-gradient-to-r from-setu-teal to-teal-700 text-white shadow-sm">
+        <div className="mx-auto flex max-w-6xl items-center gap-4 px-6 py-5">
           <img src="/logo.png" alt="" className="h-12 w-12 rounded-md bg-white/95 p-1 shadow-sm" />
           <div>
             <h1 className="text-2xl font-bold tracking-tight">SETU</h1>
-            <p className="text-teal-100 text-sm mt-1 max-w-2xl">
+            <p className="mt-1 max-w-2xl text-sm text-teal-100">
               Scheme Eligibility Contradiction Agent — detects document conflicts, resolves them
               using administrative authority rules, and auto-corrects scheme applications.
             </p>
@@ -87,96 +137,106 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
-        <section>
-          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3">
-            1. Select an Applicant
-          </h2>
-          <ApplicantSelector
-            applicants={applicants}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
+      <main className="mx-auto max-w-6xl space-y-6 px-6 py-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <ModeTab
+            active={mode === "seeded"}
+            onClick={() => setMode("seeded")}
+            label="Demo Applicants"
+            sub="4 curated scenarios, with memory across runs"
+            icon={
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+              </svg>
+            }
           />
-        </section>
+          <ModeTab
+            active={mode === "upload"}
+            onClick={() => setMode("upload")}
+            label="Upload Documents"
+            sub="Any document, any type — one-shot analysis"
+            icon={
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+              </svg>
+            }
+          />
+        </div>
 
-        {error && (
-          <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-lg p-3 text-sm">
-            {error}
-          </div>
-        )}
+        {mode === "upload" && <UploadAnalyzer />}
 
-        {loadingApplicant && (
-          <div className="text-sm text-slate-500 animate-pulse">Loading applicant records…</div>
-        )}
-
-        {docs && (
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
-                2. Source Documents
-              </h2>
-              <button
-                onClick={handleAnalyze}
-                disabled={analyzing}
-                className="bg-setu-amber hover:bg-amber-700 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg shadow-sm text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-setu-teal focus-visible:ring-offset-2"
-              >
-                {analyzing ? "Analyzing…" : "Analyze"}
-              </button>
-            </div>
-            <DocumentGrid data={docs} contradictions={result?.contradictions ?? []} />
-          </section>
-        )}
-
-        {result && (
-          <>
+        {mode === "seeded" && (
+          <div className="animate-fade-in space-y-6">
             <section>
-              <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3">
-                3. Pipeline Execution
-              </h2>
-              <PipelineTrace trace={result.pipelineTrace} />
+              <SectionHeading step={1} title="Select an Applicant" />
+              <ApplicantSelector applicants={applicants} selectedId={selectedId} onSelect={setSelectedId} />
             </section>
 
-            <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-6">
-                <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
-                  4. Contradictions & Resolution
-                </h2>
-                <ContradictionsPanel
-                  contradictions={result.contradictions}
-                  newContradictions={result.newContradictions}
-                  repeatedButResolved={result.repeatedButResolved}
+            {error && <ErrorBanner>{error}</ErrorBanner>}
+
+            {loadingApplicant && (
+              <div className="animate-pulse text-sm text-slate-500 dark:text-slate-400">
+                Loading applicant records…
+              </div>
+            )}
+
+            {docs && (
+              <section>
+                <SectionHeading
+                  step={2}
+                  title="Source Documents"
+                  action={
+                    <AccentButton onClick={handleAnalyze} disabled={analyzing}>
+                      {analyzing ? "Analyzing…" : "Analyze"}
+                    </AccentButton>
+                  }
                 />
-              </div>
-              <div className="space-y-6">
-                <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">
-                  5. Corrected Application
-                </h2>
-                <CorrectedApplicationCard app={result.correctedApplication} />
-              </div>
-            </section>
+                <DocumentGrid data={docs} contradictions={result?.contradictions ?? []} />
+              </section>
+            )}
 
-            <section>
-              <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3">
-                6. Plain-Language Report
-              </h2>
-              <ExplanationCard explanation={result.explanation} />
-            </section>
-          </>
-        )}
+            {result && (
+              <>
+                <section>
+                  <SectionHeading step={3} title="Pipeline Execution" />
+                  <PipelineTrace trace={result.pipelineTrace} />
+                </section>
 
-        {logs.length > 0 && (
-          <section>
-            <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide mb-3">
-              7. Memory — Analysis History
-            </h2>
-            <LogHistory logs={logs} />
-          </section>
+                <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="space-y-3">
+                    <SectionHeading step={4} title="Contradictions & Resolution" />
+                    <ContradictionsPanel
+                      contradictions={result.contradictions}
+                      newContradictions={result.newContradictions}
+                      repeatedButResolved={result.repeatedButResolved}
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <SectionHeading step={5} title="Corrected Application" />
+                    <CorrectedApplicationCard app={result.correctedApplication} />
+                  </div>
+                </section>
+
+                <section>
+                  <SectionHeading step={6} title="Plain-Language Report" />
+                  <ExplanationCard explanation={result.explanation} />
+                </section>
+              </>
+            )}
+
+            {logs.length > 0 && (
+              <section>
+                <SectionHeading step={7} title="Memory — Analysis History" />
+                <LogHistory logs={logs} />
+              </section>
+            )}
+          </div>
         )}
       </main>
 
-      <footer className="max-w-6xl mx-auto px-6 py-8 text-xs text-slate-500">
-        Built for Hojathon 2026. Documents shown are synthetic — modeled on real, documented
-        causes of Kerala scheme-application rejection. No real PII is used.
+      <footer className="mx-auto max-w-6xl px-6 py-8 text-xs text-slate-500 dark:text-slate-500">
+        Built for Hojathon 2026. Documents shown are synthetic — modeled on real, documented causes
+        of Kerala scheme-application rejection. No real PII is used.
       </footer>
     </div>
   );

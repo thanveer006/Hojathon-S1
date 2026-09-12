@@ -1,4 +1,5 @@
 import { PipelineTraceEntry } from "../types";
+import { Card } from "./ui";
 
 /** Inline stroke icons (no icon-library dependency) so the pipeline stages
  * render identically across operating systems — emoji do not. */
@@ -33,24 +34,24 @@ function StageIcon({ stage }: { stage: string }) {
 
 export function PipelineTrace({ trace }: { trace: PipelineTraceEntry[] }) {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-4">
-      <h3 className="font-semibold text-slate-800 mb-3">Agent Pipeline Trace</h3>
+    <Card>
+      <h3 className="mb-3 font-semibold text-slate-800 dark:text-slate-100">Agent Pipeline Trace</h3>
       <ol className="space-y-3">
         {trace.map((t, i) => (
           <li key={i} className="flex gap-3">
             <div className="flex flex-col items-center">
-              <div className="w-8 h-8 rounded-full bg-setu-teal/10 text-setu-teal flex items-center justify-center shrink-0">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-setu-teal/10 text-setu-teal dark:bg-setu-teal/20">
                 <StageIcon stage={t.stage} />
               </div>
-              {i < trace.length - 1 && <div className="w-px flex-1 bg-slate-200 my-1" />}
+              {i < trace.length - 1 && <div className="my-1 w-px flex-1 bg-slate-200 dark:bg-slate-800" />}
             </div>
             <div className="pb-2">
-              <div className="text-sm font-semibold text-slate-800">{t.stage}</div>
-              <div className="text-sm text-slate-600">{t.detail}</div>
+              <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.stage}</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">{t.detail}</div>
             </div>
           </li>
         ))}
       </ol>
-    </div>
+    </Card>
   );
 }
