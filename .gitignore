@@ -1,7 +1,6 @@
 node_modules/
 dist/
 build/
-.env
 *.log
 .DS_Store
 *.tsbuildinfo
@@ -12,3 +11,40 @@ ml/model/
 ml/checkpoints/
 ml/__pycache__/
 *.pyc
+
+# ---- Secrets & credentials ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+*secret*
+*credentials*
+*.p12
+*.pfx
+
+# ---- OS-generated files ----
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ---- Editor / IDE metadata ----
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# ---- Temporary / log files ----
+*.tmp
+*.temp
+*.bak
+*.cache
