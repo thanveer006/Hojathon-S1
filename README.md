@@ -20,7 +20,7 @@ ration card as category proof).
 ## Architecture
 
 An explicit agentic pipeline — **Ingest → Extract → Compare → Resolve → Act
-→ Log** — not a single LLM prompt pretending to reason:
+→ Log → Explain** — not a single LLM prompt pretending to reason:
 
 1. **Ingest** — load a citizen's 4 documents (Aadhaar, Ration Card, Income
    Certificate, Scheme Application).
@@ -34,12 +34,16 @@ An explicit agentic pipeline — **Ingest → Extract → Compare → Resolve �
 5. **Act** — autonomously generate a corrected scheme application object.
 6. **Log** — persist the contradiction/resolution history per applicant in
    MongoDB, so re-analysis doesn't re-flag already-resolved issues.
+7. **Explain** — turn the already-resolved log into a plain-language citizen
+   report (`server/src/engine/explain.ts`).
 
-The LLM (Claude, via the Anthropic API) is used for exactly one job: turning
-the already-resolved contradiction log into a plain-language citizen report
-(`server/src/engine/explain.ts`). It never decides which document wins —
-that logic is auditable in code. If no `ANTHROPIC_API_KEY` is set, a
-deterministic template fallback keeps the pipeline fully runnable offline.
+The language model is used for exactly one job — step 7. It never decides
+which document wins; that logic is deterministic and auditable in code. And
+it is **our own model, not a commercial API**: a LoRA fine-tune of
+`google/flan-t5-small` served locally from `ml/serve.py`, which the server
+calls over HTTP. If that sidecar isn't running, a deterministic template
+fallback keeps the pipeline fully runnable. SETU therefore needs no LLM API
+key and no network access at runtime.
 
 ### Authority Resolution Table
 
@@ -57,18 +61,51 @@ deterministic template fallback keeps the pipeline fully runnable offline.
 - **server/** — Node.js + Express + TypeScript
 - **MongoDB** (Mongoose) — applicant records, document extractions,
   contradiction logs, resolution history
-- **Anthropic API (Claude)** — plain-language explanation generation only
+- **ml/** — Python + FastAPI + transformers/PEFT — our own fine-tuned
+  explanation model, served locally
+
+## Our own explanation model (`ml/`)
+
+Rather than depend on a commercial LLM API at runtime, we trained the
+explanation model ourselves:
+
+- `ml/generate_dataset.py` — builds the training set. It synthesizes
+  contradiction scenarios in exactly the shape the rules engine emits, then
+  uses Gemini **once, offline** to write a natural citizen notice for each.
+  This is a one-time bootstrap; nothing calls it at runtime.
+- `ml/train.py` — LoRA fine-tune of `google/flan-t5-small` on those pairs.
+  Small enough to train and serve on CPU.
+- `ml/serve.py` — FastAPI sidecar on `:8001` exposing `POST /explain`, which
+  `server/src/engine/explain.ts` calls.
+- `ml/shared.py` — the single source of truth for how a contradiction record
+  is serialized into model input, imported by both training and serving so
+  the two can never drift apart.
 
 ## Running locally
 
-Prerequisites: Node.js 18+, a local MongoDB instance running on
-`mongodb://127.0.0.1:27017`.
+Prerequisites:
+
+- Node.js 18+
+- A MongoDB connection string (Atlas or local) in `server/.env` as `MONGO_URI`
+- Python 3.10+ — only if you want to run or retrain the explanation model
 
 ```bash
-npm run install:all      # installs server + client dependencies
-cp server/.env.example server/.env   # optionally add ANTHROPIC_API_KEY
-npm run seed              # seeds 4 mock applicant scenarios into MongoDB
-npm run dev                # runs server (:4000) and client (:5173) together
+npm run install:all   # installs server + client dependencies
+cp server/.env.example server/.env   # then set MONGO_URI (skip if you already have a .env)
+npm run seed          # seeds 4 mock applicant scenarios into MongoDB
+npm run dev           # server (:4000) + client (:5173)
+```
+
+No LLM API key is required. `GEMINI_API_KEY` is only read by
+`ml/generate_dataset.py` when regenerating training data offline.
+
+To run with the fine-tuned explanation model instead of the template
+fallback:
+
+```bash
+pip install -r ml/requirements.txt
+python ml/train.py     # writes the LoRA adapter to ml/model/
+npm run dev:full       # ML sidecar (:8001) + server + client
 ```
 
 Open http://localhost:5173, pick an applicant, click **Analyze**, and watch
