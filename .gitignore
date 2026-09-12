@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.env
+*.log
+.DS_Store
+*.tsbuildinfo
+
+# ML pipeline (ml/)
+ml/data/*.jsonl
+ml/model/
+ml/checkpoints/
+ml/__pycache__/
+*.pyc
