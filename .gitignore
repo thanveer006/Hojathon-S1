@@ -7,7 +7,7 @@ build/
 *.tsbuildinfo
 
 # ML pipeline (ml/)
-ml/data/*.jsonl
+ml/data/
 ml/model/
 ml/checkpoints/
 ml/__pycache__/

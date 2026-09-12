@@ -29,12 +29,14 @@ export const SOURCE_LABELS: Record<SourceKey, string> = {
   schemeApplication: "Scheme Application Form",
 };
 
-/** Converts DD/MM/YYYY -> YYYY-MM-DD for reliable comparison. Passes through if already ISO. */
+/** Converts D/M/YYYY or DD/MM/YYYY -> YYYY-MM-DD for reliable comparison, so
+ * that "5/6/2000" and "05/06/2000" normalize to the same value instead of
+ * comparing as different dates. Passes through if already ISO. */
 export function normalizeDate(raw: string): string {
-  const ddmmyyyy = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  const ddmmyyyy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (ddmmyyyy) {
     const [, dd, mm, yyyy] = ddmmyyyy;
-    return `${yyyy}-${mm}-${dd}`;
+    return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
   }
   return raw;
 }
@@ -114,6 +116,8 @@ export function extractNormalizedFields(documents: {
  * the family member name closest to the scheme applicant name. Used post-hoc by
  * the comparator, not during raw extraction, to avoid guessing during Extract.
  */
+const FAMILY_MEMBER_MATCH_THRESHOLD = 0; // no shared/phonetically-similar token = not a match
+
 export function findClosestFamilyMember(
   familyMembers: string[],
   targetName: string
@@ -124,7 +128,11 @@ export function findClosestFamilyMember(
     const score = nameSimilarity(normalizeNameForComparison(member), target);
     if (!best || score > best.score) best = { name: member, score };
   }
-  return best?.name;
+  // A score at or below the threshold means nothing in the household
+  // actually resembles the applicant's name — treat as "no match" rather
+  // than silently attributing an unrelated family member's name to them.
+  if (!best || best.score <= FAMILY_MEMBER_MATCH_THRESHOLD) return undefined;
+  return best.name;
 }
 
 /** Lightweight token-overlap similarity (0-1) — good enough for transliteration drift like Muhammed/Mohammed. */

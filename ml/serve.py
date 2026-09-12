@@ -4,6 +4,8 @@ POST /explain with the same shape it used to send to Anthropic.
 
 Usage: uvicorn serve:app --port 8001
 """
+import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import torch
@@ -17,21 +19,43 @@ from shared import TASK_PREFIX, serialize_input
 BASE_MODEL = "google/flan-t5-small"
 ADAPTER_DIR = Path(__file__).parent / "model"
 
-app = FastAPI()
 _tokenizer = None
 _model = None
+_load_lock = threading.Lock()
 
 
 def get_model():
     global _tokenizer, _model
-    if _model is None:
-        if not ADAPTER_DIR.exists():
-            raise RuntimeError("No fine-tuned adapter found — run train.py first.")
-        _tokenizer = AutoTokenizer.from_pretrained(ADAPTER_DIR)
-        base = AutoModelForSeq2SeqLM.from_pretrained(BASE_MODEL)
-        _model = PeftModel.from_pretrained(base, ADAPTER_DIR)
-        _model.eval()
+    # FastAPI runs sync endpoints in a threadpool, so two cold requests can
+    # race here and each load a full copy of the model.
+    with _load_lock:
+        if _model is None:
+            if not ADAPTER_DIR.exists():
+                raise RuntimeError("No fine-tuned adapter found — run train.py first.")
+            tokenizer = AutoTokenizer.from_pretrained(ADAPTER_DIR)
+            base = AutoModelForSeq2SeqLM.from_pretrained(BASE_MODEL)
+            model = PeftModel.from_pretrained(base, ADAPTER_DIR)
+            model.eval()
+            _tokenizer, _model = tokenizer, model
     return _tokenizer, _model
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    # Load at startup, not on first request — otherwise the first (demo)
+    # request pays the whole model-load cost and trips the caller's timeout.
+    if ADAPTER_DIR.exists():
+        try:
+            get_model()
+            print("[serve] model loaded and ready")
+        except Exception as e:  # keep serving /health so the caller can fall back
+            print(f"[serve] model failed to load: {e}")
+    else:
+        print("[serve] no adapter in ml/model — run train.py first")
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 class ContradictionValue(BaseModel):
@@ -66,13 +90,15 @@ def explain(req: ExplainRequest):
         req.correctionsApplied,
     )
     prompt = TASK_PREFIX + input_text
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=512)
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=768)
     with torch.no_grad():
-        output_ids = model.generate(**inputs, max_new_tokens=320, num_beams=4)
+        # Greedy decoding: beam search on CPU takes tens of seconds, far past
+        # the caller's timeout, which silently forces the template fallback.
+        output_ids = model.generate(**inputs, max_new_tokens=240, num_beams=1)
     text = tokenizer.decode(output_ids[0], skip_special_tokens=True).strip()
     return ExplainResponse(text=text)
 
 
 @app.get("/health")
 def health():
-    return {"ok": ADAPTER_DIR.exists()}
+    return {"ok": _model is not None, "adapter_present": ADAPTER_DIR.exists()}

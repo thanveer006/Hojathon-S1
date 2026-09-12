@@ -15,15 +15,15 @@ export function ApplicantSelector({
         <button
           key={a.applicantId}
           onClick={() => onSelect(a.applicantId)}
-          className={`text-left rounded-lg border p-4 transition shadow-sm hover:shadow-md ${
+          className={`text-left rounded-lg border p-4 transition shadow-sm hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-setu-teal focus-visible:ring-offset-2 ${
             selectedId === a.applicantId
               ? "border-setu-teal bg-teal-50 ring-2 ring-setu-teal"
               : "border-slate-200 bg-white"
           }`}
         >
-          <div className="text-xs font-mono text-slate-400">{a.applicantId}</div>
+          <div className="text-xs font-mono text-slate-500">{a.applicantId}</div>
           <div className="font-semibold text-slate-800">{a.displayName}</div>
-          <div className="text-sm text-slate-500 mt-1 line-clamp-2">{a.scenario}</div>
+          <div className="text-sm text-slate-500 mt-1 line-clamp-2 min-h-[2.5rem]">{a.scenario}</div>
         </button>
       ))}
     </div>

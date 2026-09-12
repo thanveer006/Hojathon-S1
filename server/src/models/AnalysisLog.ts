@@ -54,4 +54,10 @@ const AnalysisLogSchema = new Schema<AnalysisLogDocument>(
   { timestamps: true }
 );
 
+// Guards against a runNumber race when two /analyze requests for the same
+// applicant land concurrently (e.g. a double-click, or two open tabs) — the
+// second create() will fail fast with a duplicate-key error instead of
+// silently persisting two logs with the same runNumber.
+AnalysisLogSchema.index({ applicantId: 1, runNumber: 1 }, { unique: true });
+
 export const AnalysisLog = model<AnalysisLogDocument>("AnalysisLog", AnalysisLogSchema);

@@ -15,7 +15,7 @@ export function LogHistory({ logs }: { logs: AnalysisLogEntry[] }) {
           >
             <div>
               <span className="font-medium">Run #{l.runNumber}</span>{" "}
-              <span className="text-slate-400">{new Date(l.createdAt).toLocaleString()}</span>
+              <span className="text-slate-500">{new Date(l.createdAt).toLocaleString()}</span>
             </div>
             <div className="flex gap-2 text-xs">
               <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">

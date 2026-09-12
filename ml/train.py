@@ -7,6 +7,7 @@ Usage: python train.py [--data data/train.jsonl] [--epochs 3] [--out model]
 """
 import argparse
 import json
+import random
 from pathlib import Path
 
 from datasets import Dataset
@@ -22,7 +23,9 @@ from transformers import (
 from shared import TASK_PREFIX
 
 BASE_MODEL = "google/flan-t5-small"
-MAX_INPUT_LEN = 512
+# Must match serve.py — and be long enough that the "Corrections applied"
+# block, which serialize_input puts last, is never truncated away.
+MAX_INPUT_LEN = 768
 MAX_TARGET_LEN = 320
 
 
@@ -49,6 +52,9 @@ def main():
     if len(rows) < 20:
         raise SystemExit(f"Only {len(rows)} examples found — run generate_dataset.py first.")
 
+    # Shuffle before splitting — rows are appended in generation order, so an
+    # unshuffled head would make the val set the oldest block only.
+    random.Random(42).shuffle(rows)
     split = max(1, int(len(rows) * 0.1))
     val_rows, train_rows = rows[:split], rows[split:]
     print(f"{len(train_rows)} train / {len(val_rows)} val examples")
@@ -92,7 +98,7 @@ def main():
         eval_strategy="epoch",
         save_strategy="epoch",
         save_total_limit=1,
-        predict_with_generate=True,
+        predict_with_generate=False,  # no compute_metrics — would just burn CPU
         logging_steps=10,
         report_to=[],
     )

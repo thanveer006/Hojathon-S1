@@ -90,14 +90,15 @@ export async function runPipeline(applicant: ApplicantAttrs): Promise<PipelineRe
   );
   const newContradictions = contradictions.filter((c) => !previouslySeenHashes.has(c.fieldHash));
   const repeatedButResolved = contradictions.filter((c) => previouslySeenHashes.has(c.fieldHash));
-  const runNumber = (priorLogs[0]?.runNumber ?? 0) + 1;
+  let runNumber = (priorLogs[0]?.runNumber ?? 0) + 1;
 
-  log(
-    "Log",
-    runNumber === 1
+  const logTraceEntry = (n: number) =>
+    n === 1
       ? `First analysis run for this applicant — recording ${contradictions.length} contradiction(s) to memory.`
-      : `Run #${runNumber}. ${repeatedButResolved.length} contradiction(s) already known from a prior run (not re-flagged as new), ${newContradictions.length} newly observed.`
-  );
+      : `Run #${n}. ${repeatedButResolved.length} contradiction(s) already known from a prior run (not re-flagged as new), ${newContradictions.length} newly observed.`;
+
+  log("Log", logTraceEntry(runNumber));
+  const logEntryIndex = trace.length - 1;
 
   // EXPLAIN (LLM job #2)
   const explanation = await generateExplanation(
@@ -107,16 +108,33 @@ export async function runPipeline(applicant: ApplicantAttrs): Promise<PipelineRe
   );
   log("Explain", `Generated plain-language citizen report (${explanation.split(/\s+/).length} words).`);
 
-  await AnalysisLog.create({
-    applicantId: applicant.applicantId,
-    runNumber,
-    contradictions,
-    newContradictions,
-    repeatedButResolved,
-    correctedApplication,
-    explanation,
-    pipelineTrace: trace,
-  });
+  // A concurrent /analyze call for the same applicant (double-click, two open
+  // tabs) may have already claimed this runNumber between the read above and
+  // this write — the unique index on {applicantId, runNumber} makes that a
+  // fast, clean failure here rather than two logs silently sharing a number.
+  // Retry with the next number instead of surfacing a spurious 500.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await AnalysisLog.create({
+        applicantId: applicant.applicantId,
+        runNumber,
+        contradictions,
+        newContradictions,
+        repeatedButResolved,
+        correctedApplication,
+        explanation,
+        pipelineTrace: trace,
+      });
+      break;
+    } catch (err) {
+      const isDuplicateKey = (err as { code?: number }).code === 11000;
+      if (!isDuplicateKey || attempt === 4) throw err;
+      runNumber += 1;
+      // Keep the persisted trace consistent with the run number we end up
+      // storing, instead of the one we optimistically claimed above.
+      trace[logEntryIndex].detail = logTraceEntry(runNumber);
+    }
+  }
 
   return {
     runNumber,

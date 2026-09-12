@@ -1,6 +1,6 @@
 import { ResolvedField } from "./resolve";
 import { SchemeApplicationDoc } from "../models/Applicant";
-import { isoDateToDisplay } from "./normalize";
+import { isoDateToDisplay, SOURCE_LABELS } from "./normalize";
 
 export interface CorrectedApplication {
   applicantName: string;
@@ -69,7 +69,9 @@ function pick(
   const changed = resolved.isContradiction && String(originalValue) !== String(resolvedDisplay);
   if (changed) {
     log.push(
-      `${label}: changed from "${originalValue}" to "${resolvedDisplay}" (source of truth: ${resolved.authoritativeSource})`
+      // Human label, not the internal camelCase key — this string is shown
+      // to the citizen next to panels that already use the label form.
+      `${label}: changed from "${originalValue}" to "${resolvedDisplay}" (source of truth: ${SOURCE_LABELS[resolved.authoritativeSource]})`
     );
   }
   return isDate ? String(resolvedDisplay) : resolved.resolvedValue;

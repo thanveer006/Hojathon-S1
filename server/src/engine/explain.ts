@@ -35,8 +35,10 @@ async function callLocalModel(
   contradictions: ContradictionRecord[],
   correctedApplication: CorrectedApplication
 ): Promise<string | null> {
+  // Generous: a small CPU-served model takes seconds, and aborting early
+  // silently downgrades every response to the template fallback.
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), 30000);
   try {
     const res = await fetch(LOCAL_LLM_URL, {
       method: "POST",
