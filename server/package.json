@@ -10,7 +10,6 @@
     "seed": "ts-node src/data/seed.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
@@ -23,5 +22,8 @@
     "nodemon": "^3.1.7",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
+  },
+  "overrides": {
+    "qs": "6.16.0"
   }
 }

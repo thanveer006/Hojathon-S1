@@ -31,7 +31,7 @@ PLACES = [
 ]
 CATEGORIES = ["BPL", "APL", "AAY"]
 
-MODEL = "gemini-3.6-flash"
+MODEL = "gemini-flash-lite-latest"
 
 
 def random_name():
@@ -138,29 +138,48 @@ def main():
     out_path = Path(__file__).parent / args.out
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    written = 0
-    with out_path.open("w", encoding="utf-8") as f:
-        for i in range(args.count):
+    already = 0
+    if out_path.exists():
+        already = sum(1 for _ in out_path.open(encoding="utf-8"))
+        if already:
+            print(f"Resuming: {already} examples already in {out_path}")
+
+    written = already
+    consecutive_quota_fails = 0
+    with out_path.open("a", encoding="utf-8") as f:
+        while written < args.count:
             applicant_name, contradictions, corrections_applied = make_scenario()
             prompt = build_prompt(applicant_name, contradictions, corrections_applied)
             try:
                 resp = client.models.generate_content(model=MODEL, contents=prompt)
                 target = (resp.text or "").strip()
+                consecutive_quota_fails = 0
             except Exception as e:
-                print(f"[{i}] generation failed: {e}")
-                time.sleep(2)
+                msg = str(e)
+                if "RESOURCE_EXHAUSTED" in msg or "429" in msg:
+                    consecutive_quota_fails += 1
+                    if consecutive_quota_fails >= 3:
+                        print(f"Quota exhausted for {MODEL} after {written} examples. Stopping — "
+                              f"re-run later (same command) to resume, or pass a different model.")
+                        break
+                    print(f"[{written}] quota hit, backing off 60s...")
+                    time.sleep(60)
+                else:
+                    print(f"[{written}] generation failed: {msg[:200]}")
+                    time.sleep(2)
                 continue
             if not target:
                 continue
 
             input_text = serialize_input(applicant_name, contradictions, corrections_applied)
             f.write(json.dumps({"input": input_text, "target": target}, ensure_ascii=False) + "\n")
+            f.flush()
             written += 1
             if written % 25 == 0:
                 print(f"{written}/{args.count} written")
             time.sleep(0.5)  # stay well under free-tier rate limits
 
-    print(f"Done. {written} examples written to {out_path}")
+    print(f"Done. {written} examples in {out_path}")
 
 
 if __name__ == "__main__":
