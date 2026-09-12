@@ -103,7 +103,7 @@ the pipeline trace run stage by stage.
 
 ## Team
 
-- Team ID:
-- Team Name:
-- Team Members:
+- Team ID: 60
+- Team Name: Thanveer
+- Team Members: Thanveer Ahammed
 - Project Name: SETU
