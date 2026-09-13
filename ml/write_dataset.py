@@ -29,12 +29,6 @@ OPENERS = [
     "{name}, before your application moves forward, here's a short explanation of what we checked.",
 ]
 
-NO_CONTRADICTION_OPENERS = [
-    "Good news, {name} — all four of your documents agree with each other. No contradictions were found and your application is ready to proceed as submitted.",
-    "Hi {name}, everything checks out: your Aadhaar Card, Ration Card, Income Certificate, and application form all agree, so there's nothing further needed from you.",
-    "{name}, your documents matched perfectly across the board. Your application is moving forward as submitted, no corrections needed.",
-]
-
 # Per-field phrasing variety for describing one contradiction. Each entry is
 # a template using {label}, {values}, {source}, {reason} placeholders so the
 # sentence structure — not just the word choice — varies across examples.
@@ -82,9 +76,6 @@ def contradiction_line(c: dict) -> str:
 
 
 def build_target(applicant_name: str, contradictions: list[dict]) -> str:
-    if not contradictions:
-        return random.choice(NO_CONTRADICTION_OPENERS).format(name=applicant_name)
-
     opener = random.choice(OPENERS).format(name=applicant_name)
     lines = [contradiction_line(c) for c in contradictions]
 
