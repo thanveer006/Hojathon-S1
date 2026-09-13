@@ -41,8 +41,8 @@ Set these in `server/.env` (copy from `server/.env.example`):
 | -------- | ----------- |
 | `MONGO_URI` | MongoDB connection string (Atlas or local) |
 | `PORT` | Port the Express server listens on (default `4000`) |
-| `GEMINI_API_KEY` | Only used offline by `ml/generate_dataset.py` to bootstrap training data. Not read at runtime by the server or client. |
 | `LOCAL_LLM_URL` | URL of the `ml/serve.py` sidecar's `/explain` endpoint (default `http://127.0.0.1:8001/explain`) |
+| `GEMINI_API_KEY` | Optional. Only used by the legacy `ml/generate_dataset.py` path, not the default `ml/write_dataset.py`. Not read at runtime by the server or client. |
 
 ```bash
 cp server/.env.example server/.env
@@ -51,7 +51,7 @@ cp server/.env.example server/.env
 
 ## API Keys / Configuration
 
-SETU does **not** call any commercial LLM API at runtime — no API key is needed to run or demo the app. The only external API used is Gemini, and only offline, once, to bootstrap the training dataset for our own fine-tuned model (`ml/generate_dataset.py`). Judges do not need a Gemini key to run or evaluate the project.
+SETU does **not** call any commercial LLM API, ever, at runtime or when building the training dataset — `ml/write_dataset.py` synthesizes and writes every training example itself, offline, with no external API or key. (A legacy, unused-by-default path, `ml/generate_dataset.py`, can optionally blend in Gemini-written examples if you supply a `GEMINI_API_KEY`.) Judges do not need any API key to run, retrain, or evaluate the project.
 
 ## Database Setup
 

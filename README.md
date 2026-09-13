@@ -69,10 +69,12 @@ key and no network access at runtime.
 Rather than depend on a commercial LLM API at runtime, we trained the
 explanation model ourselves:
 
-- `ml/generate_dataset.py` — builds the training set. It synthesizes
+- `ml/write_dataset.py` — builds the training set. It synthesizes
   contradiction scenarios in exactly the shape the rules engine emits, then
-  uses Gemini **once, offline** to write a natural citizen notice for each.
-  This is a one-time bootstrap; nothing calls it at runtime.
+  writes a natural citizen notice for each itself, via a large hand-authored
+  template system — fully offline, no external API or key needed. (An
+  optional legacy path, `ml/generate_dataset.py`, can blend in Gemini-written
+  examples if you have an API key, but it isn't used by default.)
 - `ml/train.py` — LoRA fine-tune of `google/flan-t5-small` on those pairs.
   Small enough to train and serve on CPU.
 - `ml/serve.py` — FastAPI sidecar on `:8001` exposing `POST /explain`, which
@@ -96,8 +98,9 @@ npm run seed          # seeds 4 mock applicant scenarios into MongoDB
 npm run dev           # server (:4000) + client (:5173)
 ```
 
-No LLM API key is required. `GEMINI_API_KEY` is only read by
-`ml/generate_dataset.py` when regenerating training data offline.
+No LLM API key is required, ever — `ml/write_dataset.py` needs none, and the
+optional legacy `ml/generate_dataset.py` (Gemini) is not part of the default
+pipeline.
 
 To run with the fine-tuned explanation model instead of the template
 fallback:

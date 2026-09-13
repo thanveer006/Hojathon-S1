@@ -10,7 +10,7 @@ ml/data/
 ml/model/
 ml/checkpoints/
 ml/__pycache__/
-ml/*_log.txt
+ml/*log*.txt
 *.pyc
 
 # Tesseract OCR language data (downloaded at runtime, not source)
